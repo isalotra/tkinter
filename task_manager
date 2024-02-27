@@ -1,0 +1,102 @@
+import tkinter as tk
+from tkinter import messagebox
+import sqlite3
+
+# Fonctions pour interagir avec la base de données
+def create_table():
+    conn = sqlite3.connect('tasks.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS tasks
+                 (id INTEGER PRIMARY KEY, task TEXT, completed INTEGER)''')
+    conn.commit()
+    conn.close()
+
+def insert_task(task):
+    conn = sqlite3.connect('tasks.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO tasks (task, completed) VALUES (?, ?)", (task, 0))
+    conn.commit()
+    conn.close()
+
+def get_tasks():
+    conn = sqlite3.connect('tasks.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM tasks")
+    tasks = c.fetchall()
+    conn.close()
+    return tasks
+
+def delete_task(id):
+    conn = sqlite3.connect('tasks.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM tasks WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+
+def mark_completed(id):
+    conn = sqlite3.connect('tasks.db')
+    c = conn.cursor()
+    c.execute("UPDATE tasks SET completed=1 WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+
+# Fonction pour rafraîchir la liste des tâches
+def refresh_tasks():
+    task_list.delete(0, tk.END)
+    tasks = get_tasks()
+    for task in tasks:
+        task_list.insert(tk.END, task[1])
+
+# Fonctions pour gérer les événements
+def add_task():
+    task = task_entry.get()
+    if task:
+        insert_task(task)
+        refresh_tasks()
+        task_entry.delete(0, tk.END)
+
+def remove_task():
+    try:
+        index = task_list.curselection()[0]
+        task_id = get_tasks()[index][0]
+        delete_task(task_id)
+        refresh_tasks()
+    except IndexError:
+        messagebox.showwarning("Avertissement", "Veuillez sélectionner une tâche à supprimer.")
+
+def complete_task():
+    try:
+        index = task_list.curselection()[0]
+        task_id = get_tasks()[index][0]
+        mark_completed(task_id)
+        refresh_tasks()
+    except IndexError:
+        messagebox.showwarning("Avertissement", "Veuillez sélectionner une tâche à marquer comme terminée.")
+
+# Création de la fenêtre principale
+root = tk.Tk()
+root.title("Gestionnaire de Tâches")
+
+# Création des widgets
+task_entry = tk.Entry(root, width=50)
+task_entry.grid(row=0, column=0, padx=5, pady=5)
+
+add_button = tk.Button(root, text="Ajouter", command=add_task)
+add_button.grid(row=0, column=1, padx=5, pady=5)
+
+remove_button = tk.Button(root, text="Supprimer", command=remove_task)
+remove_button.grid(row=1, column=0, padx=5, pady=5)
+
+complete_button = tk.Button(root, text="Terminée", command=complete_task)
+complete_button.grid(row=1, column=1, padx=5, pady=5)
+
+task_list = tk.Listbox(root, width=50, height=15)
+task_list.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+
+# Création de la table dans la base de données
+create_table()
+
+# Rafraîchissement initial de la liste des tâches
+refresh_tasks()
+
+root.mainloop()
